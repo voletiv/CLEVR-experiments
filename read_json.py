@@ -26,8 +26,9 @@ for i in tqdm(range(len(l))):
         os.path.join("/data/lisa/data/clevr-vikram/clevr_num_of_objs/train", '%02d'% l[i], "CLEVR_train_{0:06d}.png".format(i)))
 
 
+dataset_type = "val"
 
-with open('/data/lisa/data/clevr-vikram/CLEVR_v1.0/scenes/CLEVR_val_scenes.json', 'r') as f:
+with open('/data/lisa/data/clevr-vikram/CLEVR_v1.0/scenes/CLEVR_%s_scenes.json' % dataset_type, 'r') as f:
     d = json.load(f)
 
 scenes = d['scenes']
@@ -42,8 +43,8 @@ np.histogram(l, bins=list(range(np.min(len_of_objs), np.max(len_of_objs)+2)))
 list_of_num_of_objs = np.unique(l)
 
 for i in list_of_num_of_objs:
-    os.makedirs(os.path.join('/data/lisa/data/clevr-vikram/clevr_num_of_objs/val', '%02d'% i))
+    os.makedirs(os.path.join('/data/lisa/data/clevr-vikram/clevr_num_of_objs/' + dataset_type, '%02d'% i))
 
 for i in tqdm(range(len(l))):
-    os.rename(os.path.join("/data/lisa/data/clevr-vikram/CLEVR_v1.0/images/val", "CLEVR_val_{0:06d}.png".format(i)),
-        os.path.join("/data/lisa/data/clevr-vikram/clevr_num_of_objs/val", '%02d'% l[i], "CLEVR_val_{0:06d}.png".format(i)))
+    os.rename(os.path.join("/data/lisa/data/clevr-vikram/CLEVR_v1.0/images/" + dataset_type, "CLEVR_{0}_{1:06d}.png".format(dataset_type, i)),
+        os.path.join("/data/lisa/data/clevr-vikram/clevr_num_of_objs/" + dataset_type, '%02d'% l[i], "CLEVR_{0}_{1:06d}.png".format(dataset_type, i)))
