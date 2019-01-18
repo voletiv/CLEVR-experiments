@@ -52,7 +52,7 @@ def read_clevr_data(clevr_dir, dset):
 
 
 def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=128, shuffle=False, num_per_shard=1000,
-                    max_shards=None, min_size=None, name_fmt='shard_{:010d}.hdf5', force=False):
+                    max_shards=None, min_size=None, name_fmt='shard_{:05d}.hdf5', force=False):
     # dset = 'train'
     # clevr_dir = '/home/user1/Datasets/clevr-vikram/CLEVR_v1.0'
     # # CC
@@ -102,6 +102,7 @@ def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=
     skipthought_npy_counter = 0
 
     num_shards_total = len(clevr_data['image_index'])//num_per_shard
+    name_fmt += '_of_{:05d}'.format(num_shards_total)
 
     writer = None
     shard_ps = []
@@ -202,8 +203,8 @@ def main():
                    help='Maximum number of shards. Default: None')
     p.add_argument('--min_size', type=int,
                    help='Only use images with either height or width >= MIN_SIZE. Default: None')
-    p.add_argument('--name_fmt', default='shard_{:010d}.hdf5',
-                   help='Format string for shards, must contain one placeholder for number. Default: shard_{:010d}.hdf5')
+    p.add_argument('--name_fmt', default='shard_{:05d}.hdf5',
+                   help='Format string for shards, must contain one placeholder for number. Default: shard_{:05d}.hdf5')
     p.add_argument('--force', action='store_true',
                    help='If given, continue creation even if `out_dir` exists already. NOTE: In this case, '
                         '`out_dir` is removed first!')
