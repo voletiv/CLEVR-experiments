@@ -51,7 +51,7 @@ def read_clevr_data(clevr_dir, dset):
     return clevr_data
 
 
-def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=128, shuffle=True, num_per_shard=1000,
+def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=128, shuffle=False, num_per_shard=1000,
                     max_shards=None, min_size=None, name_fmt='shard_{:010d}.hdf5', force=False):
     # dset = 'train'
     # clevr_dir = '/home/user1/Datasets/clevr-vikram/CLEVR_v1.0'
@@ -82,7 +82,10 @@ def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=
     with open(os.path.join(out_dir, 'log'), 'w') as f:
         info_str = '\n'.join('{}={}'.format(k, v) for k, v in [
             ('out_dir', out_dir),
-            ('images_glob', images_glob),
+            ('dset', dset),
+            ('clevr_dir', clevr_dir),
+            ('clevr_skipthought_npy_dir', clevr_skipthought_npy_dir),
+            ('imsize', imsize),
             ('shuffle', shuffle),
             ('num_per_shard', num_per_shard),
             ('max_shards', max_shards),
@@ -182,13 +185,15 @@ def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('out_dir',
-                   help='Where to store .hdf5 files. Additionally, the following files are stored: log, which saves '
-                        'the parameters used to create the .hdf5 files, and num_per_shard.pkl, which stores a '
-                        'dictionary mapping file names to number of entries in that file (see '
-                        'maker._get_num_in_shard).')
+    p.add_argument('out_dir', type=str,
+                   help='Where to store .hdf5 files. Additionally, the following files are stored: 1) log, which saves '
+                        'the parameters used to create the .hdf5 files; and 2) num_per_shard.pkl, which stores a '
+                        'dictionary mapping file names to number of entries in that file (see maker._get_num_in_shard).')
     p.add_argument('dset', choices=['train', 'val', 'test'])
+    p.add_argument('clevr_dir')
     p.add_argument('clevr_skipthought_npy_dir')
+    p.add_argument('--imsize', type=int, default=128,
+                   help='Number of entries per record. Default: 1000')
     p.add_argument('--shuffle', action='store_true',
                    help='Shuffle images before putting them into records. Default: Not set')
     p.add_argument('--num_per_shard', type=int, default=1000,
