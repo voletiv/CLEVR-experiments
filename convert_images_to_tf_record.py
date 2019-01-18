@@ -8,7 +8,7 @@ from scipy.misc import imread
 from skimage.transform import resize
 from tqdm import tqdm
 
-from utils import get_image, colorize
+# from utils import get_image, colorize
 
 # Based on - https://github.com/openai/improved-gan/blob/master/imagenet/convert_imagenet_to_records.py
 
