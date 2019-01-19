@@ -64,10 +64,9 @@ class ArrayRandomCrop(object):
         return self.__class__.__name__ + '(size={0}, padding={1})'.format(self.size, self.padding)
 
 
-
 class ArrayToTensor(object):
     def __call__(self, img):
-        return torch.from_numpy(img).float().div(255.)
+        return torch.from_numpy(img).float().div(255.).mul(2.).add(-1.)
 
 
 class ArrayRandomHorizontalFlip(object):

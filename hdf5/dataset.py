@@ -1,7 +1,9 @@
-import os
-import random
-import pickle
+import glob
 import h5py
+import numpy as np
+import os
+import pickle
+
 from torch.utils.data import Dataset
 
 
@@ -9,6 +11,22 @@ default_opener = lambda p_: h5py.File(p_, 'r')
 
 
 class HDF5Dataset(Dataset):
+
+    @staticmethod
+    def _get_num_in_shard(shard_p, opener=default_opener):
+        hdf5_root = os.path.dirname(shard_p)
+        p_to_num_per_shard_p = os.path.join(hdf5_root, 'num_per_shard.pkl')
+        # Speeds up filtering massively on slow file systems...
+        if os.path.isfile(p_to_num_per_shard_p):
+            with open(p_to_num_per_shard_p, 'rb') as f:
+                p_to_num_per_shard = pickle.load(f)
+                num_per_shard = p_to_num_per_shard[os.path.basename(shard_p)]
+        else:
+            print('\rOpening {}...'.format(shard_p), end='')
+            with opener(shard_p) as f:
+                num_per_shard = len(f.keys())
+        return num_per_shard
+
     @staticmethod
     def filter_smaller_shards(file_ps, opener=default_opener):
         """
@@ -47,23 +65,23 @@ class HDF5Dataset(Dataset):
         assert num_per_shard_prev is not None
         return ps, num_per_shard_prev
 
-    def __init__(self, file_ps,
-                 transform,
+    def __init__(self, clevr_hdf5_dir,
                  shuffle_shards=True,
                  opener=default_opener,
-                 seed=123):
+                 seed=29):
         """
         :param file_ps: list of file paths to .hdf5 files
         :param transform: transformation to apply to read HDF5 dataset. Must contain some transformation to array!
         :param shuffle_shards: if true, shards are shuffled with seed
         """
-        assert transform is not None, 'transform must have at least hdf5.transforms.HDF5DatasetToArray()'
-        self.num_of_shards = len(file_ps)
+        self.clevr_hdf5_dir = clevr_hdf5_dir
+        self.file_ps = glob.glob(os.path.join(clevr_hdf5_dir, '*.hdf5'))
         self.opener = opener
         self.ps, self.num_per_shard = HDF5Dataset.filter_smaller_shards(file_ps)
+        self.num_of_shards = len(ps)
         if shuffle_shards:
-            r = random.Random(seed)
-            r.shuffle(self.ps)
+            np.random.seed(seed)
+            np.random.shuffle(self.ps)
         self.transform = transform
 
     def __len__(self):
@@ -74,21 +92,9 @@ class HDF5Dataset(Dataset):
         idx_in_shard = index % self.num_per_shard
         shard_p = self.ps[shard_idx]
         with self.opener(shard_p) as f:
-            el = f[str(idx_in_shard)]
-            el = self.transform(el)  # must turn to array
-        return el
-
-
-def _get_num_in_shard(shard_p, opener=default_opener):
-    hdf5_root = os.path.dirname(shard_p)
-    p_to_num_per_shard_p = os.path.join(hdf5_root, 'num_per_shard.pkl')
-    # Speeds up filtering massively on slow file systems...
-    if os.path.isfile(p_to_num_per_shard_p):
-        with open(p_to_num_per_shard_p, 'rb') as f:
-            p_to_num_per_shard = pickle.load(f)
-            num_per_shard = p_to_num_per_shard[os.path.basename(shard_p)]
-    else:
-        print('\rOpening {}...'.format(shard_p), end='')
-        with opener(shard_p) as f:
-            num_per_shard = len(f.keys())
-    return num_per_shard
+            image = torch.from_numpy(f['images'][str(idx_in_shard)][()][None]).float().div(255.).mul(2.).add(-1.)
+            class_label = torch.tensor(f['num_of_objs'][str(idx_in_shard)][()][None])
+            q_skipthought = torch.from_numpy(f['q_skipthoughts'][str(idx_in_shard)][()][None]).float()
+            a_skipthought = torch.from_numpy(f['a_skipthoughts'][str(idx_in_shard)][()][None]).float()
+        # Return
+        return image, class_label, q_skipthought, a_skipthought
