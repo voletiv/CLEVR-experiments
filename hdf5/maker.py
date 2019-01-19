@@ -11,15 +11,6 @@ import time
 import tqdm
 
 
-def _big_enough(image_p, min_size):
-    img = Image.open(image_p)
-    img_min_dim = min(img.size)
-    if img_min_dim < min_size:
-        print('Skipping {} ({})...'.format(image_p, img.size))
-        return False
-    return True
-
-
 def read_clevr_data(clevr_dir, dset):
     # dset = 'train'
     # clevr_dir = '/home/user1/Datasets/clevr-vikram/CLEVR_v1.0'
@@ -52,7 +43,7 @@ def read_clevr_data(clevr_dir, dset):
 
 
 def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=128, shuffle=False, num_per_shard=1000,
-                    max_shards=None, min_size=None, name_fmt='shard_{:05d}.hdf5', force=False):
+                    max_shards=None, name_fmt='shard_{:05d}.hdf5', force=False):
     # dset = 'train'
     # clevr_dir = '/home/user1/Datasets/clevr-vikram/CLEVR_v1.0'
     # # CC
@@ -102,7 +93,7 @@ def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=
     skipthought_npy_counter = 0
 
     num_shards_total = len(clevr_data['image_index'])//num_per_shard
-    name_fmt += '_of_{:05d}'.format(num_shards_total)
+    name_fmt = name_fmt.split('.hdf5')[0] + '_of_{:05d}.hdf5'.format(num_shards_total)
 
     writer = None
     shard_ps = []
@@ -130,7 +121,10 @@ def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=
             shard_ps.append(shard_p)
             writer = h5py.File(shard_p, 'w')
             writer.create_dataset('dset', data=dset)
+            writer.create_group('image_idx')
+            writer.create_group('image_filenames')
             writer.create_group('images')
+            writer.create_group('num_of_objs')
             writer.create_group('questions')
             writer.create_group('answers')
             writer.create_group('q_skipthoughts')
@@ -138,6 +132,12 @@ def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=
 
         # Index in shard
         index = str(count % num_per_shard)  # expected by HDF5DataLoader, TODO: document
+
+        # Image idx
+        writer['image_idx'].create_dataset(index, data=clevr_data['image_index'][count])
+
+        # Image filename
+        writer['image_filenames'].create_dataset(index, data=clevr_data['image_filenames'][count])
 
         # Image
         if clevr_data['image_filenames'][count] != image_filename:
@@ -152,6 +152,9 @@ def make_hdf5_files(out_dir, dset, clevr_dir, clevr_skipthought_npy_dir, imsize=
             assert image.shape[0] == 3
         # Add image
         writer['images'].create_dataset(index, data=image)
+
+        # Number of objects
+        writer['num_of_objs'].create_dataset(index, data=clevr_data['num_of_objs'][count])
 
         # Q
         writer['questions'].create_dataset(index, data=clevr_data['questions'][count])
@@ -201,8 +204,6 @@ def main():
                    help='Number of entries per record. Default: 1000')
     p.add_argument('--max_shards', type=int,
                    help='Maximum number of shards. Default: None')
-    p.add_argument('--min_size', type=int,
-                   help='Only use images with either height or width >= MIN_SIZE. Default: None')
     p.add_argument('--name_fmt', default='shard_{:05d}.hdf5',
                    help='Format string for shards, must contain one placeholder for number. Default: shard_{:05d}.hdf5')
     p.add_argument('--force', action='store_true',
